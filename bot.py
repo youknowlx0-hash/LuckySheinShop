@@ -1,13 +1,14 @@
 import logging
 import uuid
 import os
+import asyncio
 from telegram import *
 from telegram.ext import *
 
 logging.basicConfig(level=logging.INFO)
 
 # ===== CONFIG =====
-BOT_TOKEN = "8206597984:AAFLFaGm20uuCGTFRn541Xo9bRDL3ahp7qs"   # ⚠️ New token use karo
+BOT_TOKEN = "8206597984:AAFLFaGm20uuCGTFRn541Xo9bRDL3ahp7qs"  # ⚠️ Apna NEW token daalo
 ADMIN_ID = 7702942505
 
 QR_PATH = "qr.png"
@@ -246,8 +247,8 @@ Amount: ₹{order['price']}
     await update.message.reply_text("⏳ Pending approval")
 
 
-# ===== MAIN =====
-def main():
+# ===== MAIN (FIXED FOR RENDER) =====
+async def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -256,8 +257,8 @@ def main():
     app.add_handler(MessageHandler(filters.PHOTO, photo))
 
     print("Running...")
-    app.run_polling()
+    await app.run_polling()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
