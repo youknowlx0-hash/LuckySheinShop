@@ -7,38 +7,44 @@ from telegram.ext import *
 logging.basicConfig(level=logging.INFO)
 
 # ===== CONFIG =====
-BOT_TOKEN = "8206597984:AAGnNefWXhRpNLWyMavc18sdgh8pERXgNZA" #Change With Your Bot Token 
+BOT_TOKEN = "8206597984:AAFLFaGm20uuCGTFRn541Xo9bRDL3ahp7qs"   # ⚠️ New token use karo
+ADMIN_ID = 7702942505
 
-ADMIN_ID = 7702942505 # Change With Your Admin Id 
-
-QR_PATH = "/storage/emulated/0/Download/qr.png" #change With Your Qr 
-
-CHANNEL = "https://t.me/Shein_Reward" #change With Your Channel 
+QR_PATH = "qr.png"
+CHANNEL = "https://t.me/Shein_Reward"
 
 VOUCHERS = {
-    "500": {"price": 25, "file": "/storage/emulated/0/Download/500.txt"},
-    "1000": {"price": 200, "file": "/storage/emulated/0/Download/1000.txt"}
+    "500": {"price": 25, "file": "data/500.txt"},
+    "1000": {"price": 200, "file": "data/1000.txt"}
 }
 
 orders = {}
 user_history = {}
 order_count = 1
 
-# ===== FILE =====
+
+# ===== FILE FUNCTIONS =====
 def load_codes(file):
-    if not os.path.exists(file):
+    try:
+        if not os.path.exists(file):
+            return []
+        with open(file, "r") as f:
+            return [x.strip() for x in f if x.strip()]
+    except:
         return []
-    with open(file, "r") as f:
-        return [x.strip() for x in f if x.strip()]
+
 
 def save_codes(file, codes):
+    os.makedirs(os.path.dirname(file), exist_ok=True)
     with open(file, "w") as f:
         f.write("\n".join(codes))
+
 
 # ===== START =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb = [["🛒 Buy Coupon", "📜 History"], ["💬 Support", "📢 Channel"]]
     await update.message.reply_text("Welcome 👋", reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True))
+
 
 # ===== TEXT =====
 async def text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -73,15 +79,17 @@ async def text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             stock = len(load_codes(VOUCHERS[value]["file"]))
             if qty > stock:
-                await update.message.reply_text("❌ Not enough stock! Order cancelled")
+                await update.message.reply_text("❌ Not enough stock!")
                 context.user_data.clear()
                 return
 
             context.user_data["qty"] = qty
+            context.user_data["await_qty"] = False
             await send_payment(update, context)
 
         except:
             await update.message.reply_text("Enter valid number")
+
 
 # ===== BUTTON =====
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -111,7 +119,6 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["await_qty"] = True
         await q.message.reply_text("Enter custom quantity:")
 
-    # 🔥 UPDATED CANCEL SYSTEM
     elif data == "cancel":
         if "order_id" in context.user_data:
             orders.pop(context.user_data["order_id"], None)
@@ -151,7 +158,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         user_history.setdefault(order["user"], []).append(f"{order['value']} x{order['qty']} Delivered")
 
-        await context.bot.send_message(order["user"], f"✅ Approved\n\n" + "\n".join(send_codes))
+        await context.bot.send_message(order["user"], "✅ Approved\n\n" + "\n".join(send_codes))
         await q.edit_message_text("Approved")
 
     elif data.startswith("reject_"):
@@ -160,6 +167,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if order:
             await context.bot.send_message(order["user"], "❌ Rejected")
         await q.edit_message_text("Rejected")
+
 
 # ===== PAYMENT =====
 async def send_payment(source, context):
@@ -193,10 +201,12 @@ async def send_payment(source, context):
 
     kb = [[InlineKeyboardButton("❌ Cancel", callback_data="cancel")]]
 
-    await context.bot.send_photo(
-        chat_id=user,
-        photo=open(QR_PATH, "rb"),
-        caption=f"""🧾 Order ID: {oid}
+    try:
+        with open(QR_PATH, "rb") as qr:
+            await context.bot.send_photo(
+                chat_id=user,
+                photo=qr,
+                caption=f"""🧾 Order ID: {oid}
 🔐 Txn: {txn}
 
 Voucher: {value}
@@ -204,8 +214,11 @@ Qty: {qty}
 Total: ₹{total}
 
 📌 Send UTR + Screenshot""",
-        reply_markup=InlineKeyboardMarkup(kb)
-    )
+                reply_markup=InlineKeyboardMarkup(kb)
+            )
+    except:
+        await context.bot.send_message(user, "QR not found ❌")
+
 
 # ===== PHOTO =====
 async def photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -232,6 +245,7 @@ Amount: ₹{order['price']}
 
     await update.message.reply_text("⏳ Pending approval")
 
+
 # ===== MAIN =====
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -244,13 +258,6 @@ def main():
     print("Running...")
     app.run_polling()
 
+
 if __name__ == "__main__":
     main()
-    
-  # Commands Run In Termux #
-  
-    # pkg update && pkg upgrade
-#pkg install python
-#pip install python-telegram-bot
-#nano bot.py
-#python bot.py
